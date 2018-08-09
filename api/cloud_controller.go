@@ -88,7 +88,9 @@ func AnnotateWithCloudControllerData(app *domain.App) {
 		app.Buildpack = ccAppDetails.DetectedBP
 	}
 
-	app.Environment = ccAppDetails.Environment
+	// Omit ENVIRONMENT information, as this often leaks sensitive information about the applications runtime
+//	app.Environment = ccAppDetails.Environment
+	app.Environment = nil
 
 	app.Organization.ID = org.Guid
 	app.Organization.Name = org.Name

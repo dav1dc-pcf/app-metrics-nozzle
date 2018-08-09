@@ -27,3 +27,4 @@ _testmain.go
 *.iml
 run.sh
 my.db
+set-app-env.sh
