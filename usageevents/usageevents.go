@@ -17,39 +17,43 @@ limitations under the License.
 package usageevents
 
 import (
+	"app-metrics-nozzle/domain"
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"github.com/cloudfoundry-community/firehose-to-syslog/caching"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
-	"github.com/cloudfoundry/sonde-go/events"
-	"strings"
-	"strconv"
-	"app-metrics-nozzle/domain"
-	"os"
-	"log"
+
+	"github.com/cloudfoundry-community/firehose-to-syslog/caching"
 	"github.com/cloudfoundry-community/go-cfclient"
+	"github.com/cloudfoundry/sonde-go/events"
 )
 
 // Event is a struct represented an event augmented/decorated with corresponding app/space/org data.
 type Event struct {
-	Msg            string `json:"message"`
-	Type           string `json:"event_type"`
-	Origin         string `json:"origin"`
-	AppID          string `json:"app_id"`
-	Timestamp      int64  `json:"timestamp"`
-	SourceType     string `json:"source_type"`
-	MessageType    string `json:"message_type"`
-	SourceInstance string `json:"source_instance"`
-	AppName        string `json:"app_name"`
-	OrgName        string `json:"org_name"`
-	SpaceName      string `json:"space_name"`
-	OrgID          string `json:"org_id"`
-	SpaceID        string `json:"space_id"`
-	CellIP         string `json:"cell_ip"`
-	InstanceIndex  int32  `json:"instance_index"`
+	Msg            string  `json:"message"`
+	Type           string  `json:"event_type"`
+	Origin         string  `json:"origin"`
+	AppID          string  `json:"app_id"`
+	Timestamp      int64   `json:"timestamp"`
+	SourceType     string  `json:"source_type"`
+	MessageType    string  `json:"message_type"`
+	SourceInstance string  `json:"source_instance"`
+	AppName        string  `json:"app_name"`
+	OrgName        string  `json:"org_name"`
+	SpaceName      string  `json:"space_name"`
+	OrgID          string  `json:"org_id"`
+	SpaceID        string  `json:"space_id"`
+	CellIP         string  `json:"cell_ip"`
+	InstanceIndex  int32   `json:"instance_index"`
 	CPUPercentage  float64 `json:"cpu_percentage"`
-	MemBytes       uint64 `json:"mem_bytes"`
-	DiskBytes      uint64 `json:"disk_bytes"`
+	MemBytes       uint64  `json:"mem_bytes"`
+	DiskBytes      uint64  `json:"disk_bytes"`
+	StatusCode     int32   `json:"status_code"`
 }
 
 var mutex sync.Mutex
@@ -99,31 +103,57 @@ func ProcessEvent(msg *events.Envelope) {
 		event.AnnotateWithAppData()
 		updateAppWithContainerMetrics(event)
 	}
+
+	if eventType == events.Envelope_HttpStartStop {
+		// Skip processing if the App GUID is nil
+		if msg.HttpStartStop.GetApplicationId() != nil {
+			event = HttpStartStop(msg)
+			event.AnnotateWithAppData()
+			updateAppWithHttpStartStop(event)
+		}
+
+	}
+}
+
+func HttpStartStop(msg *events.Envelope) Event {
+	hss := msg.HttpStartStop
+	applicationId := ""
+
+	if hss.GetApplicationId() != nil {
+		applicationId = ToUUIDString(hss.GetApplicationId())
+		//logger.Println("Processed HTTPStartStop message with AppID " + applicationId)
+	}
+
+	return Event{
+		Origin:     msg.GetOrigin(),
+		Type:       msg.GetEventType().String(),
+		AppID:      applicationId,
+		Timestamp:  hss.GetStopTimestamp(),
+		StatusCode: hss.GetStatusCode(),
+	}
 }
 
 func ContainerMetric(msg *events.Envelope) Event {
 	message := msg.GetContainerMetric()
 
 	return Event{
-		Origin:         msg.GetOrigin(),
-		Type:           msg.GetEventType().String(),
-		AppID:          message.GetApplicationId(),
-		CellIP:                *msg.Ip,
-		InstanceIndex:  message.GetInstanceIndex(),
-		CPUPercentage:  message.GetCpuPercentage(),
-		MemBytes:       message.GetMemoryBytes(),
-		DiskBytes:      message.GetDiskBytes(),
+		Origin:        msg.GetOrigin(),
+		Type:          msg.GetEventType().String(),
+		AppID:         message.GetApplicationId(),
+		CellIP:        *msg.Ip,
+		InstanceIndex: message.GetInstanceIndex(),
+		CPUPercentage: message.GetCpuPercentage(),
+		MemBytes:      message.GetMemoryBytes(),
+		DiskBytes:     message.GetDiskBytes(),
 	}
 }
-
-
 
 // GetMapKeyFromAppData converts the combo of an app, space, and org into a hashmap key
 func GetMapKeyFromAppData(orgName string, spaceName string, appName string) string {
 	return fmt.Sprintf("%s/%s/%s", orgName, spaceName, appName)
 }
 
-func updateAppWithAppEvent(event Event)  {
+func updateAppWithAppEvent(event Event) {
 	appName := event.AppName
 	appOrg := event.OrgName
 	appSpace := event.SpaceName
@@ -176,6 +206,27 @@ func updateAppWithContainerMetrics(event Event) {
 
 	AppDetails[appKey] = appDetail
 	//logger.Println("Updated with Container metrics " + appKey)
+}
+
+func updateAppWithHttpStartStop(event Event) {
+
+	appName := event.AppName
+	appOrg := event.OrgName
+	appSpace := event.SpaceName
+
+	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
+	appDetail := AppDetails[appKey]
+
+	// Increment the HTTP Error counter, else increment HTTP non-error counter
+	if event.StatusCode/100 == 5 || event.StatusCode == 400 {
+		appDetail.HTTPErrorCount++
+		//logger.Println("Incremented HTTPErrorCount for appKey " + appKey)
+	} else {
+		appDetail.HTTPGoodCount++
+		//logger.Println("Incremented HTTPGoodCount for appKey " + appKey)
+	}
+
+	AppDetails[appKey] = appDetail
 }
 
 func updateAppDetails(event Event) {
@@ -272,4 +323,22 @@ func (e *Event) AnnotateWithAppData() {
 			e.OrgName = cfOrgName
 		}
 	}
+}
+
+// Something to help with converting the HttpStartStop.Application.Id.UUID to a regular String
+func ToUUIDString(u *events.UUID) string {
+	w := bytes.NewBufferString("")
+
+	binary.Write(w, binary.LittleEndian, u.Low)
+	binary.Write(w, binary.LittleEndian, u.High)
+
+	b := w.Bytes()
+
+	//f47ac10b-58cc-4372-a567-0e02b2c3d479
+	return fmt.Sprintf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+		b[0], b[1], b[2], b[3],
+		b[4], b[5],
+		b[6], b[7],
+		b[8], b[9],
+		b[10], b[11], b[12], b[13], b[14], b[15])
 }
