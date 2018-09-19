@@ -51,5 +51,6 @@ type App struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"space"`
-	State string `json:"state"`
+	State      string `json:"state"`
+	StatsSince int64  `json:"stats_since"`
 }

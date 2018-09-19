@@ -16,12 +16,14 @@ limitations under the License.
 package api
 
 import (
-	cfclient "github.com/cloudfoundry-community/go-cfclient"
-	"os"
+	"app-metrics-nozzle/domain"
 	"log"
+	"os"
 	"strconv"
 	"strings"
-	"app-metrics-nozzle/domain"
+	"time"
+
+	cfclient "github.com/cloudfoundry-community/go-cfclient"
 )
 
 var logger = log.New(os.Stdout, "", 0)
@@ -38,22 +40,22 @@ type CFClientCaller interface {
 	SpaceOrg(space cfclient.Space) (cfclient.Org, error)
 }
 
-func AppByGuidVerify(guid string) (cfclient.App) {
+func AppByGuidVerify(guid string) cfclient.App {
 	app, _ := Client.AppByGuid(guid)
 	return app
 }
 
-func AppInstancesByGuidVerify(guid string) (map[string]cfclient.AppInstance) {
+func AppInstancesByGuidVerify(guid string) map[string]cfclient.AppInstance {
 	app, _ := Client.GetAppInstances(guid)
 	return app
 }
 
-func UsersByOrgVerify(guid string) ([]cfclient.User) {
+func UsersByOrgVerify(guid string) []cfclient.User {
 	app, _ := Client.UsersBy(guid, "organizations")
 	return app
 }
 
-func UsersBySpaceVerify(guid string) ([]cfclient.User) {
+func UsersBySpaceVerify(guid string) []cfclient.User {
 	app, _ := Client.UsersBy(guid, "spaces")
 	return app
 }
@@ -75,7 +77,7 @@ func AnnotateWithCloudControllerData(app *domain.App) {
 
 	for idx, eachInstance := range instances {
 		if strings.Compare(instanceUp, eachInstance.State) == 0 {
-			runnintCount++;
+			runnintCount++
 		}
 		i, _ := strconv.ParseInt(idx, 10, 32)
 		app.Instances[i].InstanceIndex = i
@@ -89,7 +91,7 @@ func AnnotateWithCloudControllerData(app *domain.App) {
 	}
 
 	// Omit ENVIRONMENT information, as this often leaks sensitive information about the applications runtime
-//	app.Environment = ccAppDetails.Environment
+	//app.Environment = ccAppDetails.Environment
 	app.Environment = nil
 
 	app.Organization.ID = org.Guid
@@ -106,6 +108,9 @@ func AnnotateWithCloudControllerData(app *domain.App) {
 
 	app.EnvironmentSummary.TotalDiskProvisioned = ccAppDetails.DiskQuota * 1024 * 1024 * int32(len(instances))
 	app.EnvironmentSummary.TotalMemoryProvisioned = ccAppDetails.MemQuota * 1024 * 1024 * int32(len(instances))
+
+	now := time.Now()
+	app.StatsSince = now.Unix()
 
 	if 0 < len(ccAppDetails.RouteData) {
 		app.Routes = make([]string, len(ccAppDetails.RouteData))
@@ -136,7 +141,3 @@ func OrgsDetailsFromCloudController() (Orgs []cfclient.Org) {
 	orgs, _ := Client.ListOrgs()
 	return orgs
 }
-
-
-
-

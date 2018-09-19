@@ -10,7 +10,7 @@ applications:
   env:
     GOVERSION: go1.6
     GOPACKAGENAME: app-metrics-nozzle
-    CF_PULL_TIME: 1200s
+    CF_PULL_TIME: 33s
     SKIP_SSL_VALIDATION: true
 #    API_ENDPOINT: https://api.local.pcfdev.io
 #    DOPPLER_ENDPOINT: wss://doppler.local.pcfdev.io:443
