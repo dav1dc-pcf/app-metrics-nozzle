@@ -27,9 +27,8 @@ type EnvironmentSummary struct {
 	TotalMemoryUsage       uint64  `json:"total_memory_usage"`
 }
 type App struct {
-	Buildpack string `json:"buildpack"`
-	Diego     bool   `json:"diego"`
-
+	Buildpack          string                 `json:"buildpack"`
+	Diego              bool                   `json:"diego"`
 	Environment        map[string]interface{} `json:"environment"`
 	EnvironmentSummary EnvironmentSummary     `json:"environment_summary"`
 	GUID               string                 `json:"guid"`

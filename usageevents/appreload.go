@@ -1,9 +1,10 @@
 package usageevents
 
 import (
-	"fmt"
-	"app-metrics-nozzle/domain"
 	"app-metrics-nozzle/api"
+	"app-metrics-nozzle/domain"
+	"fmt"
+
 	"github.com/cloudfoundry-community/firehose-to-syslog/caching"
 )
 
@@ -19,8 +20,16 @@ func ReloadApps(cachedApps []caching.App) {
 		appId := cachedApps[idx].Guid
 		name := cachedApps[idx].Name
 
-		appDetail := domain.App{GUID:appId, Name:name}
+		appDetail := domain.App{GUID: appId, Name: name}
 		api.AnnotateWithCloudControllerData(&appDetail)
+
+		// Do our best to copy over existing Cell IP's for instances
+		for idx, eachInstance := range AppDetails[key].Instances {
+			if eachInstance.InstanceIndex == appDetail.Instances[idx].InstanceIndex {
+				appDetail.Instances[idx].CellIP = eachInstance.CellIP
+			}
+		}
+
 		AppDetails[key] = appDetail
 		logger.Println(fmt.Sprintf("Registered [%s]", key))
 	}
