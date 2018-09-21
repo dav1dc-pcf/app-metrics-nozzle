@@ -56,7 +56,7 @@ type Event struct {
 	StatusCode     int32   `json:"status_code"`
 }
 
-var mutex sync.Mutex
+var mutex = sync.RWMutex{}
 
 var logger = log.New(os.Stdout, "", 0)
 
@@ -159,7 +159,9 @@ func updateAppWithAppEvent(event Event) {
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
+	mutex.RLock()
 	appDetail := AppDetails[appKey]
+	mutex.RUnlock()
 
 	gcStatsMarker := "[GC"
 	if strings.Contains(event.Msg, gcStatsMarker) {
@@ -168,7 +170,9 @@ func updateAppWithAppEvent(event Event) {
 		logger.Println("Setting GC for app " + appKey)
 	}
 
+	mutex.Lock()
 	AppDetails[appKey] = appDetail
+	mutex.Unlock()
 	//logger.Println("Updated with App event " + appKey)
 
 }
@@ -180,7 +184,9 @@ func updateAppWithContainerMetrics(event Event) {
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
+	mutex.RLock()
 	appDetail := AppDetails[appKey]
+	mutex.RUnlock()
 
 	var totalCPU float64 = 0
 	var totalDiskUsage uint64 = 0
@@ -204,7 +210,9 @@ func updateAppWithContainerMetrics(event Event) {
 	appDetail.EnvironmentSummary.TotalDiskUsage = totalDiskUsage
 	appDetail.EnvironmentSummary.TotalMemoryUsage = totalMemoryUsage
 
+	mutex.Lock()
 	AppDetails[appKey] = appDetail
+	mutex.Unlock()
 	//logger.Println("Updated with Container metrics " + appKey)
 }
 
@@ -215,7 +223,9 @@ func updateAppWithHttpStartStop(event Event) {
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
+	mutex.RLock()
 	appDetail := AppDetails[appKey]
+	mutex.RUnlock()
 
 	// Increment the HTTP Error counter, else increment HTTP non-error counter
 	if event.StatusCode/100 == 5 || event.StatusCode == 400 {
@@ -226,7 +236,9 @@ func updateAppWithHttpStartStop(event Event) {
 		//logger.Println("Incremented HTTPGoodCount for appKey " + appKey)
 	}
 
+	mutex.Lock()
 	AppDetails[appKey] = appDetail
+	mutex.Unlock()
 }
 
 func updateAppDetails(event Event) {
@@ -236,7 +248,9 @@ func updateAppDetails(event Event) {
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
+	mutex.RLock()
 	appDetail := AppDetails[appKey]
+	mutex.RUnlock()
 	appDetail.Organization.Name = appOrg
 	appDetail.Organization.ID = event.OrgID
 	appDetail.Space.Name = appSpace
@@ -253,7 +267,9 @@ func updateAppDetails(event Event) {
 	elapsedSeconds := totalElapsed / 1000000000
 	appDetail.RequestsPerSecond = float64(appDetail.EventCount) / float64(elapsedSeconds)
 	appDetail.ElapsedSinceLastEvent = eventElapsed / 1000000000
+	mutex.Lock()
 	AppDetails[appKey] = appDetail
+	mutex.Unlock()
 	//spew.Dump(AppDetails[appKey])
 
 	//logger.Println("Updated with App Details " + appKey)

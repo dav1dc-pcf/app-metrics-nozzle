@@ -8,7 +8,7 @@ applications:
   buildpacks: 
   - https://github.com/cloudfoundry/go-buildpack.git
   env:
-    GOVERSION: go1.6
+    GOVERSION: go1.9
     GOPACKAGENAME: app-metrics-nozzle
     CF_PULL_TIME: 33s
     SKIP_SSL_VALIDATION: true

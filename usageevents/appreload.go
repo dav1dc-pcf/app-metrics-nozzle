@@ -24,13 +24,17 @@ func ReloadApps(cachedApps []caching.App) {
 		api.AnnotateWithCloudControllerData(&appDetail)
 
 		// Do our best to copy over existing Cell IP's for instances
+		mutex.RLock()
 		for idx, eachInstance := range AppDetails[key].Instances {
 			if eachInstance.InstanceIndex == appDetail.Instances[idx].InstanceIndex {
 				appDetail.Instances[idx].CellIP = eachInstance.CellIP
 			}
 		}
+		mutex.RUnlock()
 
+		mutex.Lock()
 		AppDetails[key] = appDetail
+		mutex.Unlock()
 		logger.Println(fmt.Sprintf("Registered [%s]", key))
 	}
 
