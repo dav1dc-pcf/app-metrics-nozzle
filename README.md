@@ -6,6 +6,9 @@ The original **README** can be viewed [here](README.orig.md).
 
 ## Setup
 
+Each Foundation that one wishes to visualize will need an instance of this application pushed to it.
+Then your instance of [vz-metrics-adapter](https://github.com/dav1dc-pcf/vz-metrics-adapter) will need to primed (configured) with knowledge about the location of each instance of **app-metrics-nozzle**.
+
 Edit `manifest.yml` and un-comment the following lines:
 
 ```
