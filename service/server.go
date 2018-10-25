@@ -17,14 +17,13 @@ limitations under the License.
 package service
 
 import (
-	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
+	"github.com/urfave/negroni"
 )
 
 // NewServer configures and returns a Server.
 func NewServer() *negroni.Negroni {
-
 	formatter := render.New(render.Options{
 		IndentJSON: true,
 	})
@@ -52,6 +51,4 @@ func initRoutes(mx *mux.Router, formatter *render.Render) {
 	mx.HandleFunc("/api/spaces/{space}/users", spacesUsersHandler(formatter)).Methods("GET")
 	mx.HandleFunc("/api/spaces/{space}/{role}/users", spacesUsersByRoleHandler(formatter)).Methods("GET")
 	mx.HandleFunc("/api/spaces", spaceHandler(formatter)).Methods("GET")
-
-
 }

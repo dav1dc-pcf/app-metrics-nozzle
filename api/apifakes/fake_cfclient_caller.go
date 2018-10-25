@@ -2,8 +2,9 @@
 package apifakes
 
 import (
-	"app-metrics-nozzle/api"
 	"sync"
+
+	"app-metrics-nozzle/api"
 
 	cfclient "github.com/cloudfoundry-community/go-cfclient"
 )

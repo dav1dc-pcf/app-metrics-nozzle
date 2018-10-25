@@ -20,3 +20,4 @@ import:
   vcs: git
 - package: github.com/unrolled/render
 - package: gopkg.in/alecthomas/kingpin.v2
+- package: github.com/orcaman/concurrent-map

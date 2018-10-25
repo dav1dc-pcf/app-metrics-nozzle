@@ -2,25 +2,25 @@
 package usageeventsfakes
 
 import (
-	"app-metrics-nozzle/usageevents"
 	"sync"
 
 	"github.com/cloudfoundry-community/firehose-to-syslog/caching"
+	"app-metrics-nozzle/usageevents"
 )
 
 type FakeCachedApp struct {
-	GetAppByGuidStub        func(appGuid string) []caching.App
-	getAppByGuidMutex       sync.RWMutex
-	getAppByGuidArgsForCall []struct {
-		appGuid string
+	GetAppByGUIDStub        func(appGUID string) []caching.App
+	getAppByGUIDMutex       sync.RWMutex
+	getAppByGUIDArgsForCall []struct {
+		appGUID string
 	}
-	getAppByGuidReturns struct {
+	getAppByGUIDReturns struct {
 		result1 []caching.App
 	}
-	GetAppInfoStub        func(appGuid string) caching.App
+	GetAppInfoStub        func(appGUID string) caching.App
 	getAppInfoMutex       sync.RWMutex
 	getAppInfoArgsForCall []struct {
-		appGuid string
+		appGUID string
 	}
 	getAppInfoReturns struct {
 		result1 caching.App
@@ -35,48 +35,48 @@ type FakeCachedApp struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeCachedApp) GetAppByGuid(appGuid string) []caching.App {
-	fake.getAppByGuidMutex.Lock()
-	fake.getAppByGuidArgsForCall = append(fake.getAppByGuidArgsForCall, struct {
-		appGuid string
-	}{appGuid})
-	fake.recordInvocation("GetAppByGuid", []interface{}{appGuid})
-	fake.getAppByGuidMutex.Unlock()
-	if fake.GetAppByGuidStub != nil {
-		return fake.GetAppByGuidStub(appGuid)
+func (fake *FakeCachedApp) GetAppByGUID(appGUID string) []caching.App {
+	fake.getAppByGUIDMutex.Lock()
+	fake.getAppByGUIDArgsForCall = append(fake.getAppByGUIDArgsForCall, struct {
+		appGUID string
+	}{appGUID})
+	fake.recordInvocation("GetAppByGUID", []interface{}{appGUID})
+	fake.getAppByGUIDMutex.Unlock()
+	if fake.GetAppByGUIDStub != nil {
+		return fake.GetAppByGUIDStub(appGUID)
 	} else {
-		return fake.getAppByGuidReturns.result1
+		return fake.getAppByGUIDReturns.result1
 	}
 }
 
-func (fake *FakeCachedApp) GetAppByGuidCallCount() int {
-	fake.getAppByGuidMutex.RLock()
-	defer fake.getAppByGuidMutex.RUnlock()
-	return len(fake.getAppByGuidArgsForCall)
+func (fake *FakeCachedApp) GetAppByGUIDCallCount() int {
+	fake.getAppByGUIDMutex.RLock()
+	defer fake.getAppByGUIDMutex.RUnlock()
+	return len(fake.getAppByGUIDArgsForCall)
 }
 
-func (fake *FakeCachedApp) GetAppByGuidArgsForCall(i int) string {
-	fake.getAppByGuidMutex.RLock()
-	defer fake.getAppByGuidMutex.RUnlock()
-	return fake.getAppByGuidArgsForCall[i].appGuid
+func (fake *FakeCachedApp) GetAppByGUIDArgsForCall(i int) string {
+	fake.getAppByGUIDMutex.RLock()
+	defer fake.getAppByGUIDMutex.RUnlock()
+	return fake.getAppByGUIDArgsForCall[i].appGUID
 }
 
-func (fake *FakeCachedApp) GetAppByGuidReturns(result1 []caching.App) {
-	fake.GetAppByGuidStub = nil
-	fake.getAppByGuidReturns = struct {
+func (fake *FakeCachedApp) GetAppByGUIDReturns(result1 []caching.App) {
+	fake.GetAppByGUIDStub = nil
+	fake.getAppByGUIDReturns = struct {
 		result1 []caching.App
 	}{result1}
 }
 
-func (fake *FakeCachedApp) GetAppInfo(appGuid string) caching.App {
+func (fake *FakeCachedApp) GetAppInfo(appGUID string) caching.App {
 	fake.getAppInfoMutex.Lock()
 	fake.getAppInfoArgsForCall = append(fake.getAppInfoArgsForCall, struct {
-		appGuid string
-	}{appGuid})
-	fake.recordInvocation("GetAppInfo", []interface{}{appGuid})
+		appGUID string
+	}{appGUID})
+	fake.recordInvocation("GetAppInfo", []interface{}{appGUID})
 	fake.getAppInfoMutex.Unlock()
 	if fake.GetAppInfoStub != nil {
-		return fake.GetAppInfoStub(appGuid)
+		return fake.GetAppInfoStub(appGUID)
 	} else {
 		return fake.getAppInfoReturns.result1
 	}
@@ -91,7 +91,7 @@ func (fake *FakeCachedApp) GetAppInfoCallCount() int {
 func (fake *FakeCachedApp) GetAppInfoArgsForCall(i int) string {
 	fake.getAppInfoMutex.RLock()
 	defer fake.getAppInfoMutex.RUnlock()
-	return fake.getAppInfoArgsForCall[i].appGuid
+	return fake.getAppInfoArgsForCall[i].appGUID
 }
 
 func (fake *FakeCachedApp) GetAppInfoReturns(result1 caching.App) {
@@ -129,8 +129,8 @@ func (fake *FakeCachedApp) GetAllAppReturns(result1 []caching.App) {
 func (fake *FakeCachedApp) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getAppByGuidMutex.RLock()
-	defer fake.getAppByGuidMutex.RUnlock()
+	fake.getAppByGUIDMutex.RLock()
+	defer fake.getAppByGUIDMutex.RUnlock()
 	fake.getAppInfoMutex.RLock()
 	defer fake.getAppInfoMutex.RUnlock()
 	fake.getAllAppMutex.RLock()

@@ -17,10 +17,12 @@ package service
 
 import (
 	"net/http"
+
+	cfclient "github.com/cloudfoundry-community/go-cfclient"
+
 	"github.com/gorilla/mux"
 	"app-metrics-nozzle/usageevents"
 	"github.com/unrolled/render"
-	"github.com/cloudfoundry-community/go-cfclient"
 )
 
 func spacesUsersHandler(formatter *render.Render) http.HandlerFunc {
@@ -55,7 +57,7 @@ func spacesUsersByRoleHandler(formatter *render.Render) http.HandlerFunc {
 					foundUsers = append(foundUsers, usageevents.SpacesUsers[space][idx])
 				}
 			}
-			if (0 < len(foundUsers)) {
+			if 0 < len(foundUsers) {
 				formatter.JSON(w, http.StatusOK, foundUsers)
 			} else {
 				formatter.JSON(w, http.StatusNotFound, "No users found for specified role.")
@@ -82,7 +84,7 @@ func orgsUsersByRoleHandler(formatter *render.Render) http.HandlerFunc {
 					foundUsers = append(foundUsers, usageevents.OrganizationUsers[org][idx])
 				}
 			}
-			if (0 < len(foundUsers)) {
+			if 0 < len(foundUsers) {
 				formatter.JSON(w, http.StatusOK, foundUsers)
 			} else {
 				formatter.JSON(w, http.StatusNotFound, "No users found for specified role.")
@@ -117,4 +119,3 @@ func orgsUsersHandler(formatter *render.Render) http.HandlerFunc {
 		}
 	}
 }
-

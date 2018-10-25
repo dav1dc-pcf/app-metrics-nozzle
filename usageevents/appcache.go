@@ -2,25 +2,27 @@ package usageevents
 
 import "github.com/cloudfoundry-community/firehose-to-syslog/caching"
 
+// AppCache allows retrieving information from the cache
+type AppCache struct{}
 
-
-type AppCache struct{
-}
-
+// CachedApp interface for retrieving information from the cache
 type CachedApp interface {
-	GetAppByGuid(appGuid string) []caching.App
-	GetAppInfo(appGuid string) caching.App
+	GetAppByGUID(appGUID string) []caching.App
+	GetAppInfo(appGUID string) caching.App
 	GetAllApp() []caching.App
 }
 
-func (c *AppCache)GetAppByGuid(appGuid string) []caching.App{
-	return caching.GetAppByGuid(appGuid)
+// GetAppByGUID get Applications by guid
+func (c *AppCache) GetAppByGUID(appGUID string) []caching.App {
+	return caching.GetAppByGuid(appGUID)
 }
 
-func (c *AppCache)GetAppInfo(appGuid string) caching.App{
-	return caching.GetAppInfo(appGuid)
+// GetAppInfo get App by appGUID
+func (c *AppCache) GetAppInfo(appGUID string) caching.App {
+	return caching.GetAppInfo(appGUID)
 }
 
-func (c *AppCache)GetAllApp() []caching.App {
+// GetAllApp get all caching.App
+func (c *AppCache) GetAllApp() []caching.App {
 	return caching.GetAllApp()
 }
