@@ -1,14 +1,20 @@
 package usageevents
 
 import (
-	"app-metrics-nozzle/api"
-	"app-metrics-nozzle/domain"
 	"fmt"
+	"time"
+
+	"app-metrics-nozzle/domain"
 
 	"github.com/cloudfoundry-community/firehose-to-syslog/caching"
 )
 
-func ReloadApps(cachedApps []caching.App) {
+type apiClient interface {
+	AnnotateWithCloudControllerData(app *domain.App)
+}
+
+// ReloadApps responsilbe for refreshing apps in the cache
+func ReloadApps(cachedApps []caching.App, client apiClient) {
 	logger.Println("Start filling app/space/org cache.")
 	for idx := range cachedApps {
 
@@ -20,21 +26,22 @@ func ReloadApps(cachedApps []caching.App) {
 		appId := cachedApps[idx].Guid
 		name := cachedApps[idx].Name
 
-		appDetail := domain.App{GUID: appId, Name: name}
-		api.AnnotateWithCloudControllerData(&appDetail)
+		appDetail := &domain.App{GUID: appId, Name: name}
+		client.AnnotateWithCloudControllerData(appDetail)
+		appDetail.FetchTime = time.Now().String()
 
-		// Do our best to copy over existing Cell IP's for instances
-		mutex.RLock()
-		for idx, eachInstance := range AppDetails[key].Instances {
-			if eachInstance.InstanceIndex == appDetail.Instances[idx].InstanceIndex {
-				appDetail.Instances[idx].CellIP = eachInstance.CellIP
+		a, _ := AppDetails.Get(key)
+		if a != nil {
+			appDetails := a.(domain.App)
+			// Do our best to copy over existing Cell IP's for instances
+			for idx, eachInstance := range appDetails.Instances {
+				if eachInstance.InstanceIndex == appDetail.Instances[idx].InstanceIndex {
+					appDetail.Instances[idx].CellIP = eachInstance.CellIP
+				}
 			}
 		}
-		mutex.RUnlock()
 
-		mutex.Lock()
-		AppDetails[key] = appDetail
-		mutex.Unlock()
+		AppDetails.Set(key, *appDetail)
 		logger.Println(fmt.Sprintf("Registered [%s]", key))
 	}
 

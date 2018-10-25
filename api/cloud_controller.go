@@ -16,18 +16,22 @@ limitations under the License.
 package api
 
 import (
-	"app-metrics-nozzle/domain"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"app-metrics-nozzle/domain"
+
 	cfclient "github.com/cloudfoundry-community/go-cfclient"
 )
 
+type apiClient struct {
+	client CFClientCaller
+}
+
 var logger = log.New(os.Stdout, "", 0)
-var Client CFClientCaller
 
 type CFClientCaller interface {
 	AppByGuid(guid string) (cfclient.App, error)
@@ -40,40 +44,45 @@ type CFClientCaller interface {
 	SpaceOrg(space cfclient.Space) (cfclient.Org, error)
 }
 
-func AppByGuidVerify(guid string) cfclient.App {
-	app, _ := Client.AppByGuid(guid)
+// NewApiClient returns wrapper for CC Client
+func NewApiClient(client CFClientCaller) apiClient {
+	return apiClient{client}
+}
+
+func (a apiClient) AppByGuidVerify(guid string) cfclient.App {
+	app, _ := a.client.AppByGuid(guid)
 	return app
 }
 
-func AppInstancesByGuidVerify(guid string) map[string]cfclient.AppInstance {
-	app, _ := Client.GetAppInstances(guid)
+func (a apiClient) AppInstancesByGuidVerify(guid string) map[string]cfclient.AppInstance {
+	app, _ := a.client.GetAppInstances(guid)
 	return app
 }
 
-func UsersByOrgVerify(guid string) []cfclient.User {
-	app, _ := Client.UsersBy(guid, "organizations")
+func (a apiClient) UsersByOrgVerify(guid string) []cfclient.User {
+	app, _ := a.client.UsersBy(guid, "organizations")
 	return app
 }
 
-func UsersBySpaceVerify(guid string) []cfclient.User {
-	app, _ := Client.UsersBy(guid, "spaces")
+func (a apiClient) UsersBySpaceVerify(guid string) []cfclient.User {
+	app, _ := a.client.UsersBy(guid, "spaces")
 	return app
 }
 
-func AnnotateWithCloudControllerData(app *domain.App) {
+func (a apiClient) AnnotateWithCloudControllerData(app *domain.App) {
 
-	ccAppDetails, _ := Client.AppByGuid(app.GUID)
+	ccAppDetails, _ := a.client.AppByGuid(app.GUID)
 
-	instances, _ := Client.GetAppInstances(app.GUID)
+	instances, _ := a.client.GetAppInstances(app.GUID)
 	runnintCount := 0
 	instanceUp := "RUNNING"
 
-	space, _ := Client.AppSpace(ccAppDetails)
-	org, _ := Client.SpaceOrg(space)
+	space, _ := a.client.AppSpace(ccAppDetails)
+	org, _ := a.client.SpaceOrg(space)
 
 	app.Diego = ccAppDetails.Diego
 	app.Buildpack = ccAppDetails.Buildpack
-	app.Instances = make([]domain.Instances, int64(len(instances)))
+	app.Instances = make([]domain.Instance, int64(len(instances)))
 
 	for idx, eachInstance := range instances {
 		if strings.Compare(instanceUp, eachInstance.State) == 0 {
@@ -122,22 +131,22 @@ func AnnotateWithCloudControllerData(app *domain.App) {
 	app.State = ccAppDetails.State
 }
 
-func UsersForSpace(guid string) (Users []cfclient.User) {
-	users, _ := Client.UsersBy(guid, "spaces")
+func (a apiClient) UsersForSpace(guid string) (Users []cfclient.User) {
+	users, _ := a.client.UsersBy(guid, "spaces")
 	return users
 }
 
-func UsersForOrganization(guid string) (Users []cfclient.User) {
-	users, _ := Client.UsersBy(guid, "organizations")
+func (a apiClient) UsersForOrganization(guid string) (Users []cfclient.User) {
+	users, _ := a.client.UsersBy(guid, "organizations")
 	return users
 }
 
-func SpacesDetailsFromCloudController() (Spaces []cfclient.Space) {
-	spaces, _ := Client.ListSpaces()
+func (a apiClient) SpacesDetailsFromCloudController() (Spaces []cfclient.Space) {
+	spaces, _ := a.client.ListSpaces()
 	return spaces
 }
 
-func OrgsDetailsFromCloudController() (Orgs []cfclient.Org) {
-	orgs, _ := Client.ListOrgs()
+func (a apiClient) OrgsDetailsFromCloudController() (Orgs []cfclient.Org) {
+	orgs, _ := a.client.ListOrgs()
 	return orgs
 }

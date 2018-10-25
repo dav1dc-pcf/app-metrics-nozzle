@@ -19,19 +19,20 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/gorilla/mux"
+	"app-metrics-nozzle/domain"
 	"app-metrics-nozzle/usageevents"
 	"github.com/unrolled/render"
-	"strings"
-	"app-metrics-nozzle/domain"
-	"strconv"
 )
 
 func appAllHandler(formatter *render.Render) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Access-Control-Allow-Origin", req.Header.Get("Origin"))
 		w.Header().Add("Access-Control-Allow-Methods", "GET")
-		formatter.JSON(w, http.StatusOK, usageevents.AppDetails)
+		formatter.JSON(w, http.StatusOK, usageevents.AppDetails.Items())
 	}
 }
 
@@ -63,10 +64,11 @@ func appSpaceHandler(formatter *render.Render) http.HandlerFunc {
 }
 
 func searchApps(searchKey string, w http.ResponseWriter, formatter *render.Render) {
-	allAppDetails := usageevents.AppDetails
+	allAppDetails := usageevents.AppDetails.Items()
 	foundApps := make(map[string]domain.App)
 
-	for idx, appDetail := range allAppDetails {
+	for idx, a := range allAppDetails {
+		appDetail := a.(domain.App)
 		if strings.HasPrefix(idx, searchKey) {
 			foundApps[idx] = appDetail
 		}
@@ -91,22 +93,22 @@ func appInstanceHandler(formatter *render.Render) http.HandlerFunc {
 		org := vars["org"]
 		space := vars["space"]
 		key := usageevents.GetMapKeyFromAppData(org, space, app)
-		stat, exists := usageevents.AppDetails[key]
+		a, exists := usageevents.AppDetails.Get(key)
 
 		if !exists {
 			formatter.JSON(w, http.StatusNotFound, "No such app")
 		}
 
+		appDetail := a.(domain.App)
 		instanceIdx, _ := strconv.ParseInt(instanceIndex, 10, 64)
 
-		if 0 <= instanceIdx && instanceIdx < int64(len(stat.Instances))  {
-			formatter.JSON(w, http.StatusOK, stat.Instances[instanceIdx])
+		if 0 <= instanceIdx && instanceIdx < int64(len(appDetail.Instances)) {
+			formatter.JSON(w, http.StatusOK, appDetail.Instances[instanceIdx])
 		} else {
 			formatter.JSON(w, http.StatusNotFound, "No such instance")
 		}
 	}
 }
-
 
 //New deep structure with all application details
 func appHandler(formatter *render.Render) http.HandlerFunc {
@@ -119,7 +121,7 @@ func appHandler(formatter *render.Render) http.HandlerFunc {
 		org := vars["org"]
 		space := vars["space"]
 		key := usageevents.GetMapKeyFromAppData(org, space, app)
-		stat, exists := usageevents.AppDetails[key]
+		stat, exists := usageevents.AppDetails.Get(key)
 
 		if exists {
 			//todo calc needed statistics before serving

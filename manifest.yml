@@ -12,7 +12,7 @@ applications:
     GOPACKAGENAME: app-metrics-nozzle
     CF_PULL_TIME: 33s
     SKIP_SSL_VALIDATION: true
-#    API_ENDPOINT: https://api.local.pcfdev.io
-#    DOPPLER_ENDPOINT: wss://doppler.local.pcfdev.io:443
-#    FIREHOSE_USER: xxxxx
+#    API_ENDPOINT: https://api.sys.your-pcf.com
+#    DOPPLER_ENDPOINT: wss://doppler.sys.your-pcf.com:443
+#    FIREHOSE_USER: admin
 #    FIREHOSE_PASSWORD: xxxxx

@@ -25,11 +25,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudfoundry-community/firehose-to-syslog/caching"
-	"github.com/cloudfoundry-community/go-cfclient"
+	cfclient "github.com/cloudfoundry-community/go-cfclient"
 	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/orcaman/concurrent-map"
 )
 
 // Event is a struct represented an event augmented/decorated with corresponding app/space/org data.
@@ -57,7 +59,9 @@ type Event struct {
 
 var logger = log.New(os.Stdout, "", 0)
 
-var AppDetails = make(map[string]domain.App)
+var mutex = &sync.Mutex{}
+
+var AppDetails = cmap.New() //make(map[string]domain.App)
 var OrganizationUsers = make(map[string][]cfclient.User)
 var SpacesUsers = make(map[string][]cfclient.User)
 var Orgs []cfclient.Org
@@ -151,12 +155,19 @@ func GetMapKeyFromAppData(orgName string, spaceName string, appName string) stri
 }
 
 func updateAppWithAppEvent(event Event) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	appName := event.AppName
 	appOrg := event.OrgName
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
-	appDetail := AppDetails[appKey]
+	cachedAppDetail, _ := AppDetails.Get(appKey)
+	if cachedAppDetail == nil {
+		return
+	}
+	appDetail := cachedAppDetail.(domain.App)
 
 	gcStatsMarker := "[GC"
 	if strings.Contains(event.Msg, gcStatsMarker) {
@@ -165,43 +176,53 @@ func updateAppWithAppEvent(event Event) {
 		logger.Println("Setting GC for app " + appKey)
 	}
 
-	AppDetails[appKey] = appDetail
+	AppDetails.Set(appKey, appDetail)
 	//logger.Println("Updated with App event " + appKey)
 
 }
 
 func updateAppWithContainerMetrics(event Event) {
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	appName := event.AppName
 	appOrg := event.OrgName
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
-	appDetail := AppDetails[appKey]
+	cachedAppDetail, _ := AppDetails.Get(appKey)
+	if cachedAppDetail == nil {
+		return
+	}
+	appDetail := cachedAppDetail.(domain.App)
 
-	var totalCPU float64 = 0
-	var totalDiskUsage uint64 = 0
-	var totalMemoryUsage uint64 = 0
+	var totalCPU float64
+	var totalDiskUsage uint64
+	var totalMemoryUsage uint64
 
-	if 0 < len(appDetail.Instances) {
+	if len(appDetail.Instances) <= int(event.InstanceIndex) {
+		for i := len(appDetail.Instances); i <= int(event.InstanceIndex); i++ {
+			appDetail.Instances = append(appDetail.Instances, domain.Instance{})
+		}
+	}
 
+	if len(appDetail.Instances) > 0 {
 		appDetail.Instances[event.InstanceIndex].CellIP = event.CellIP
 		appDetail.Instances[event.InstanceIndex].CPUUsage = event.CPUPercentage
 		appDetail.Instances[event.InstanceIndex].MemoryUsage = event.MemBytes
 		appDetail.Instances[event.InstanceIndex].DiskUsage = event.DiskBytes
+		appDetail.Instances[event.InstanceIndex].LastEvent = time.Now().String()
 
-		for i := 0; i < len(appDetail.Instances); i++ {
-			totalCPU = totalCPU + event.CPUPercentage
-			totalDiskUsage = totalDiskUsage + event.DiskBytes
-			totalMemoryUsage = totalMemoryUsage + event.MemBytes
-		}
+		totalCPU = totalCPU + event.CPUPercentage
+		totalDiskUsage = totalDiskUsage + event.DiskBytes
+		totalMemoryUsage = totalMemoryUsage + event.MemBytes
 	}
 
 	appDetail.EnvironmentSummary.TotalCPU = totalCPU
 	appDetail.EnvironmentSummary.TotalDiskUsage = totalDiskUsage
 	appDetail.EnvironmentSummary.TotalMemoryUsage = totalMemoryUsage
 
-	AppDetails[appKey] = appDetail
+	AppDetails.Set(appKey, appDetail)
 	//logger.Println("Updated with Container metrics " + appKey)
 }
 
@@ -212,7 +233,11 @@ func updateAppWithHttpStartStop(event Event) {
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
-	appDetail := AppDetails[appKey]
+	cachedAppDetail, _ := AppDetails.Get(appKey)
+	if cachedAppDetail == nil {
+		return
+	}
+	appDetail := cachedAppDetail.(domain.App)
 
 	// Increment the HTTP Error counter, else increment HTTP non-error counter
 	if event.StatusCode/100 == 5 || event.StatusCode == 400 {
@@ -223,17 +248,23 @@ func updateAppWithHttpStartStop(event Event) {
 		//logger.Println("Incremented HTTPGoodCount for appKey " + appKey)
 	}
 
-	AppDetails[appKey] = appDetail
+	AppDetails.Set(appKey, appDetail)
 }
 
 func updateAppDetails(event Event) {
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	appName := event.AppName
 	appOrg := event.OrgName
 	appSpace := event.SpaceName
 
 	appKey := GetMapKeyFromAppData(appOrg, appSpace, appName)
-	appDetail := AppDetails[appKey]
+	cachedAppDetail, _ := AppDetails.Get(appKey)
+	if cachedAppDetail == nil {
+		return
+	}
+	appDetail := cachedAppDetail.(domain.App)
 	appDetail.Organization.Name = appOrg
 	appDetail.Organization.ID = event.OrgID
 	appDetail.Space.Name = appSpace
@@ -250,11 +281,7 @@ func updateAppDetails(event Event) {
 	elapsedSeconds := totalElapsed / 1000000000
 	appDetail.RequestsPerSecond = float64(appDetail.EventCount) / float64(elapsedSeconds)
 	appDetail.ElapsedSinceLastEvent = eventElapsed / 1000000000
-	AppDetails[appKey] = appDetail
-	//spew.Dump(AppDetails[appKey])
-
-	//logger.Println("Updated with App Details " + appKey)
-
+	AppDetails.Set(appKey, appDetail)
 }
 
 func getAppInfo(appGUID string) caching.App {
@@ -262,7 +289,7 @@ func getAppInfo(appGUID string) caching.App {
 		return app
 	}
 
-	AppDbCache.GetAppByGuid(appGUID)
+	AppDbCache.GetAppByGUID(appGUID)
 
 	return AppDbCache.GetAppInfo(appGUID)
 }

@@ -18,14 +18,14 @@ package service
 
 import (
 	"net/http"
+
 	"app-metrics-nozzle/usageevents"
 	"github.com/unrolled/render"
 
-	"github.com/gorilla/mux"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
-
-
 
 func spaceDetailsHandler(formatter *render.Render) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {

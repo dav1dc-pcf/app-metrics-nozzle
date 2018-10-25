@@ -5,7 +5,7 @@ type InstanceCount struct {
 	Running    int `json:"running"`
 }
 
-type Instances struct {
+type Instance struct {
 	CellIP        string  `json:"cell_ip"`
 	CPUUsage      float64 `json:"cpu_usage"`  //CPUPercentage
 	DiskUsage     uint64  `json:"disk_usage"` //DiskBytes
@@ -15,6 +15,7 @@ type Instances struct {
 	Uptime        int32   `json:"uptime"`
 	Since         int32   `json:"since"`
 	State         string  `json:"state"`
+	LastEvent     string  `json:"last_event"`
 }
 
 type EnvironmentSummary struct {
@@ -27,14 +28,15 @@ type EnvironmentSummary struct {
 	TotalMemoryUsage       uint64  `json:"total_memory_usage"`
 }
 type App struct {
-	Buildpack          string                 `json:"buildpack"`
-	Diego              bool                   `json:"diego"`
+	Buildpack string `json:"buildpack"`
+	Diego     bool   `json:"diego"`
+
 	Environment        map[string]interface{} `json:"environment"`
 	EnvironmentSummary EnvironmentSummary     `json:"environment_summary"`
 	GUID               string                 `json:"guid"`
-	InstanceCount      `json:"instance_count"`
-	Instances          []Instances `json:"instances"`
-	Name               string      `json:"name"`
+	InstanceCount      InstanceCount          `json:"instance_count"`
+	Instances          []Instance             `json:"instances"`
+	Name               string                 `json:"name"`
 	Organization       struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
@@ -51,5 +53,6 @@ type App struct {
 		Name string `json:"name"`
 	} `json:"space"`
 	State      string `json:"state"`
+	FetchTime string `json:"fetch_time"`
 	StatsSince int64  `json:"stats_since"`
 }
