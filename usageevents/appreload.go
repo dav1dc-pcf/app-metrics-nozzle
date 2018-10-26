@@ -35,8 +35,10 @@ func ReloadApps(cachedApps []caching.App, client apiClient) {
 			appDetails := a.(domain.App)
 			// Do our best to copy over existing Cell IP's for instances
 			for idx, eachInstance := range appDetails.Instances {
-				if eachInstance.InstanceIndex == appDetail.Instances[idx].InstanceIndex {
-					appDetail.Instances[idx].CellIP = eachInstance.CellIP
+				if idx < len(appDetail.Instances) {
+					if appDetail.Instances[idx].InstanceIndex == eachInstance.InstanceIndex {
+						appDetail.Instances[idx].CellIP = eachInstance.CellIP
+					}
 				}
 			}
 		}
